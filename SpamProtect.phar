@@ -1,0 +1,186 @@
+<?php echo "PocketMine-MP plugin SpamProtect v1.1.1\nThis file has been generated using DevTools v1.10.0 at Sun, 20 Sep 2015 18:54:11 -0800\n----------------\n";if(extension_loaded("phar")){$phar = new \Phar(__FILE__);foreach($phar->getMetadata() as $key => $value){echo ucfirst($key).": ".(is_array($value) ? implode(", ", $value):$value)."\n";}} __HALT_COMPILER(); ?>
+~             S  a:9:{s:4:"name";s:11:"SpamProtect";s:7:"version";s:5:"1.1.1";s:4:"main";s:34:"falkirks\chatdefender\ChatDefender";s:3:"api";a:1:{i:0;s:5:"1.6.0";}s:6:"depend";a:0:{}s:11:"description";s:34:"Protects TheCloudPvP against spam!";s:7:"authors";a:2:{i:0;s:8:"Falkriks";i:1;s:12:"MrGamerPro50";}s:7:"website";N;s:12:"creationDate";i:1442804051;}   out/ChatDefender_v1.1.1.phar3  TqÿU3  ^IH¶      
+   plugin.yml?  TqÿU?  *46¶         resources/config.ymlÓ  TqÿUÓ  V þ¶      *   src/falkirks/chatdefender/ChatDefender.phpW  TqÿUW  ¬ßc¶      )   src/falkirks/chatdefender/ChatSession.phpË  TqÿUË  ÈrÕ¶      <?php echo "PocketMine-MP plugin ChatDefender v1.1.1\n----------------\n";if(extension_loaded("phar")){$phar = new \Phar(__FILE__);foreach($phar->getMetadata() as $key => $value){echo ucfirst($key).": ".(is_array($value) ? implode(", ", $value):$value)."\n";}date_default_timezone_set("UTC");
+echo "Checking for updates...\n";;
+$ch = curl_init("https://api.github.com/repos/" . $phar->getMetaData()["authors"][0] . "/" . $phar->getMetaData()["name"] . "/releases");
+curl_setopt($ch, CURLOPT_HTTPHEADER, ["User-Agent: Mozilla/5.0 (Windows NT 6.1; WOW64; rv:12.0) Gecko/20100101 Firefox/12.0"]);
+curl_setopt($ch, CURLOPT_AUTOREFERER, true);
+curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 2);
+curl_setopt($ch, CURLOPT_FORBID_REUSE, 1);
+curl_setopt($ch, CURLOPT_FRESH_CONNECT, 1);
+curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 10);
+$ret = json_decode(curl_exec($ch), true);
+curl_close($ch);
+
+if($ret[0]["tag_name"] != "v" . $phar->getMetaData()["version"]){
+    echo "[!] There is a newer version on GitHub.\n\n";
+    echo "Update details\n";
+    echo "----------------\n";
+    echo "Version: " . $ret[0]["tag_name"] . "\n";
+    echo "Name: " . $ret[0]["name"] . "\n";
+    echo "Details: " . $ret[0]["body"] . "\n\n";
+    echo "[?] Would you like to update now?";
+    if(trim(fgets(STDIN)) == "y") {
+        $fp = fopen(__DIR__ . '/' . $ret[0]["assets"][0]["name"], 'w+');
+        $ch = curl_init($ret[0]["assets"][0]["browser_download_url"]);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 50);
+        curl_setopt($ch, CURLOPT_FILE, $fp); // write curl response to file
+        curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+        curl_exec($ch);
+        curl_close($ch);
+        fclose($fp);
+        if($ret[0]["assets"][0]["name"] == basename(__FILE__)){
+            echo "[!] Download complete. The new phar has replaced the old one.\n";
+            echo "[!] Hope you enjoy the new version :)\n";
+        }
+        else{
+            echo "[?] Download complete. Would you like to delete me?";
+            if(trim(fgets(STDIN)) == "y") {
+                unlink(__FILE__);
+                echo "[!] Ouch! That's me cleaned up. Hope you enjoy the newer version :)\n";
+            }
+            else{
+                echo "[#] See ya later.\n";
+            }
+        }
+    }
+    else{
+        echo "[#] Okay, bye then ;)\n";
+    }
+}
+else{
+    echo "[#] Your version is up to date.\n";
+}
+}__HALT_COMPILER(); ?>
+&                a:9:{s:4:"name";s:12:"ChatDefender";s:7:"version";s:5:"1.1.1";s:4:"main";s:34:"falkirks\chatdefender\ChatDefender";s:3:"api";a:1:{i:0;s:5:"1.6.0";}s:6:"depend";a:0:{}s:11:"description";N;s:7:"authors";a:1:{i:0;s:8:"Falkirks";}s:7:"website";N;s:12:"creationDate";i:1418586309;}¿·áßFý©3SEá’ó{ÌånO¡â   GBMBname: SpamProtect
+main: falkirks\chatdefender\ChatDefender
+version: 1.1.1
+authors: [Falkriks, MrGamerPro50]
+api: [1.6.0]
+description: Protects TheCloudPvP against spam!
+load: POSTWORLD
+permissions:
+ chatdefender:
+  default: op
+  description: ChatDefender top level
+  children:
+   chatdefender.exempt:
+    default: op
+    description: Exempt from all blocks
+    children:
+      chatdefender.exempt.similar:
+        default: op
+        description: Exempt from similarity checking
+      chatdefender.exempt.rate:
+        default: op
+        description: Exempt from rate limit
+similarity: 6
+  # Required similarity of messages to be considered spam
+  # Uses similar_text()
+ratelimit: 5
+  # Mininum time between messages for them to be considered spam
+  # if it is 1 then messages sent 1 second apart or less will be spam
+blockme: true
+  # Block usage of /me by blocked players
+baseblocklength: 45
+  # Block length in seconds
+  # Will increase with repeated blocks
+  # This is a custom version of ChatDefender, intented to be used by TheCloudPvP<?php
+namespace falkirks\chatdefender;
+use pocketmine\event\Listener;
+use pocketmine\event\player\PlayerChatEvent;
+use pocketmine\event\player\PlayerCommandPreprocessEvent;
+use pocketmine\event\player\PlayerQuitEvent;
+use pocketmine\plugin\PluginBase;
+use pocketmine\utils\Config;
+
+class ChatDefender extends PluginBase implements Listener{
+    /** @var  ChatSession[] */
+    public $sessions;
+    public function onEnable(){
+        $this->saveDefaultConfig();
+        $this->getServer()->getPluginManager()->registerEvents($this, $this);
+        $this->s = [];
+    }
+    public function onChat(PlayerChatEvent $event){
+        if(!isset($this->sessions[$event->getPlayer()->getName()])){
+            $this->sessions[$event->getPlayer()->getName()] = new ChatSession($this);
+            $this->sessions[$event->getPlayer()->getName()]->bindToPlayer($event->getPlayer());
+        }
+        if(!$this->sessions[$event->getPlayer()->getName()]->sendMessage($event->getMessage())){
+            $event->setCancelled();
+        }
+    }
+    public function onQuit(PlayerQuitEvent $event){
+        if(isset($this->sessions[$event->getPlayer()->getName()])) unset($this->sessions[$event->getPlayer()->getName()]);
+    }
+    public function onCommandPreProcess(PlayerCommandPreprocessEvent $event){
+        if($this->getConfig()->get("blockme") && isset($this->sessions[$event->getPlayer()->getName()]) && $this->sessions[$event->getPlayer()->getName()]->isBlocked()){
+            $args = explode(" ", $event->getMessage());
+            if($args[0] == "/me"){
+                $event->setCancelled();
+            }
+        }
+    }
+}
+<?php
+namespace falkirks\chatdefender;
+use pocketmine\Player;
+use pocketmine\scheduler\PluginTask;
+
+class ChatSession extends PluginTask{
+    private $state;
+    private $m;
+    private $blockLength;
+    /** @var  Player */
+    private $player;
+    public function bindToPlayer(Player $player){
+        $this->player = $player;
+        $this->blockLength = 1;
+        $this->state = 0;
+    }
+    public function sendMessage($message){
+        if($this->state == 2){
+            $this->player->sendMessage("Â§0- Â§c Your are currently muted for spam!");
+            return false;
+        }
+        elseif($this->similarityCheck($message) || $this->rateCheck()){
+            if($this->state == 1){
+                $this->state = 2;
+                $this->player->sendMessage("Â§0- Â§c You have been muted for Â§9" . $this->blockLength * $this->getOwner()->getConfig()->get("baseblocklength") . " Â§csecounds.");
+                $this->getOwner()->getServer()->getScheduler()->scheduleDelayedTask($this, 20*$this->getOwner()->getConfig()->get("baseblocklength")*$this->blockLength);
+                $this->blockLength++;
+                return false;
+            }
+            else{
+                $this->state = 1;
+                $this->player->sendMessage("Â§0- Â§cLet others talkÂ§4! Â§c-=Â§9{Â§bIf you spam more your will be muted!Â§9}Â§c=-");
+                $this->m = array($message, time());
+                return false;
+            }
+        }
+        else{
+            $this->m = array($message, time());
+            return true;
+        }
+    }
+    public function onRun($tick){
+        $this->state = 0;
+        $this->player->sendMessage("Â§0- Â§aYour mute has been lifted");
+    }
+    public function similarityCheck($message){
+        if($this->player->hasPermission("chatdefender.exempt.similar")) return false;
+        return ((strlen($message) - similar_text($this->m[0],$message)) <= $this->getOwner()->getConfig()->get("similarity"));
+    }
+    public function rateCheck(){
+        if($this->player->hasPermission("chatdefender.exempt.rate")) return false;
+        return ((time() - $this->m[1]) <= $this->getOwner()->getConfig()->get("ratelimit"));
+    }
+    public function isBlocked(){
+        return $this->state === 2;
+    }
+}]ïøÔúpEÝQ7BÿÅ&N
+´D„S   GBMB
